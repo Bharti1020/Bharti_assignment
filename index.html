@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GAME SELECTION - GRID CHALLENGE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: #161623;
+            min-height: 100vh;
+            overflow-x: hidden;
+            /* NEW: Ensure body takes full viewport for background layering */
+            position: relative;
+        }
+
+        /* === NEW LAYER 1: GLOWING GIF BACKGROUND === */
+        .gif-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .gif-background img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;      /* Ensures the GIF covers entire screen, no white gaps */
+            object-position: center;
+            pointer-events: none;    /* Allows clicking through to the carousel */
+        }
+
+        /* === NEW LAYER 2: BLUR OVERLAY + SUBTLE GRID (keeps your original aesthetic) === */
+        .blur-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* Strong backdrop blur to create "frosted glass" above the GIF */
+            backdrop-filter: blur(12px);
+            /* Optional: a very subtle dark tint to enhance readability & the "check mark background" feel */
+            background-color: rgba(0, 0, 0, 0.25);
+            /* Your original animated grid lines (the "check mark background" aesthetic) */
+            background-image: 
+                repeating-linear-gradient(90deg, 
+                    rgba(100, 150, 255, 0.15) 0px, 
+                    rgba(100, 150, 255, 0.15) 1px,
+                    transparent 1px,
+                    transparent 60px),
+                repeating-linear-gradient(0deg, 
+                    rgba(100, 150, 255, 0.15) 0px, 
+                    rgba(100, 150, 255, 0.15) 1px,
+                    transparent 1px,
+                    transparent 60px);
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;    /* So clicks pass through to cards and buttons */
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(60px, 60px); }
+        }
+
+        /* Main container - sits above both background layers */
+        .container {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0 40px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .title {
+            font-size: 54px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ffffff, #88aaff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px rgba(100, 150, 255, 0.5);
+        }
+
+        .hint {
+            color: #ddd;
+            font-size: 14px;
+            margin-top: 10px;
+            letter-spacing: 1px;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* Carousel Container */
+        .carousel-container {
+            position: relative;
+            flex: 1;
+            min-height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .cards-track {
+            display: flex;
+            gap: 40px;
+            transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            will-change: transform;
+            padding: 0 20px;
+            cursor: grab;
+        }
+
+        .cards-track.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+
+        /* Game Card - semi-transparent to enhance layered look, but readable */
+        .game-card {
+            width: 420px;
+            height: 310px;
+            background: rgba(30, 30, 45, 0.85);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            position: relative;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 215, 0, 0.7);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+            background: rgba(35, 35, 55, 0.9);
+        }
+
+        .game-card.selected {
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+            transform: scale(1.02);
+        }
+
+        /* Card Image Area */
+        .card-image {
+            width: 100%;
+            height: calc(100% - 50px);
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .card-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));
+        }
+
+        .game-letter {
+            font-size: 80px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 1;
+            text-transform: uppercase;
+            text-shadow: 0 2px 5px black;
+        }
+
+        /* Card Label */
+        .card-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            letter-spacing: 1px;
+        }
+
+        /* Play Icon */
+        .play-icon {
+            position: absolute;
+            bottom: 65px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            background: rgba(220, 50, 50, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid white;
+            z-index: 2;
+        }
+
+        .play-icon:hover {
+            transform: scale(1.1);
+            background: rgba(255, 80, 80, 0.95);
+        }
+
+        .play-icon::after {
+            content: '▶';
+            color: white;
+            font-size: 14px;
+            margin-left: 2px;
+        }
+
+        /* Selected Badge */
+        .selected-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #ffd700;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        /* Navigation Arrows */
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.65);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .nav-arrow:hover {
+            background: rgba(255, 215, 0, 0.4);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .nav-arrow.left {
+            left: 30px;
+        }
+
+        .nav-arrow.right {
+            right: 30px;
+        }
+
+        .nav-arrow span {
+            font-size: 30px;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Dot Indicators */
+        .dot-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #aaa;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            width: 12px;
+            height: 12px;
+            background: #ffd700;
+            box-shadow: 0 0 10px #ffd700;
+        }
+
+        /* Start Button */
+        .start-section {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .selected-info {
+            color: #ffd700;
+            font-size: 14px;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px black;
+            font-weight: 600;
+        }
+
+        .start-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #2a6f8f, #1a4f6f);
+            border: none;
+            padding: 14px 48px;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, #3a7f9f, #2a5f7f);
+        }
+
+        /* Video Modal - stays on top */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2a;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 900px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #2a2a3a, #1a1a2a);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header h2 {
+            color: #ffd700;
+            font-size: 20px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0 10px;
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            color: #ff4444;
+            transform: scale(1.1);
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .video-controls {
+            padding: 15px 20px;
+            background: #0a0a0e;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #ffd700;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .time-display {
+            color: #aaa;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .volume-slider {
+            width: 80px;
+            height: 4px;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .game-card {
+                width: 320px;
+                height: 240px;
+            }
+            
+            .title {
+                font-size: 36px;
+            }
+            
+            .nav-arrow {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .nav-arrow span {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .game-card {
+                width: 280px;
+                height: 210px;
+            }
+            
+            .card-label {
+                font-size: 14px;
+            }
+            
+            .start-btn {
+                padding: 10px 32px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LAYER 1: GLOWING GIF BACKGROUND (from your link) -->
+    <div class="gif-background">
+        <img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2lraGt1YmNqd2d5djQ2NGRramd2OXk1aGFnOG8xYm9xNncybzBkeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26BRGoqbUQvk8nwTC/giphy.gif" 
+             alt="animated glow background"
+             crossorigin="anonymous"
+             loading="eager">
+    </div>
+
+    <!-- LAYER 2: BLUR OVERLAY + ANIMATED GRID (check mark / tech style) -->
+    <div class="blur-overlay"></div>
+
+    <!-- MAIN CONTENT LAYER 3 -->
+    <div class="container">
+        <div class="header">
+            <h1 class="title">GAME SELECTION</h1>
+            <p class="hint">← → browse  |  click card to preview video  |  START to play</p>
+        </div>
+
+        <div class="carousel-container">
+            <div class="nav-arrow left" id="navLeft">
+                <span>◀</span>
+            </div>
+            
+            <div class="cards-track" id="cardsTrack"></div>
+            
+            <div class="nav-arrow right" id="navRight">
+                <span>▶</span>
+            </div>
+        </div>
+
+        <div class="dot-indicators" id="dotIndicators"></div>
+
+        <div class="start-section">
+            <div class="selected-info" id="selectedInfo">Selected: Escape The Lava</div>
+            <button class="start-btn" id="startBtn">
+                ▶ START GAME
+            </button>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div class="modal" id="videoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Video Preview</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="video-container">
+                <video id="videoPlayer" controls>
+                    <source id="videoSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div class="video-controls">
+                <button class="control-btn" id="playPauseBtn">⏸ Pause</button>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span class="time-display" id="timeDisplay">00:00 / 00:00</span>
+                <div class="volume-control">
+                    <span>🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="70" class="volume-slider">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game data matching your original, with video URLs (Google Drive direct preview compatible)
+        const games = [
+            {
+                name: "Escape The Lava",
+                Image: "escape_the_lava.jpg",
+                videoPath: "videos/escape_the_lava.mp4",
+                videoUrl: "https://drive.google.com/file/d/1q4xLStjq-ZqZn62eSUoY0tmLAgwD0w1I/view?usp=drive_link",
+
+                letter: "E"
+            },
+            {
+                name: "Find The Color",
+                Image: "find_the_color.jpg",
+                videoPath: "videos/find_the_color.mp4",
+                videoUrl: "https://drive.google.com/file/d/1tELPmu0XY-2VylqNAdjMpmlLFn_yac52/view?usp=drive_link",
+
+                letter: "F"
+            },
+            {
+                name: "Red Light Green Light",
+                Image: "red_light_green_light.jpg",
+                videoPath: "videos/red_light_green_light.mp4",
+                videoUrl: "https://drive.google.com/file/d/1PB1KMRokKApwNof6834C7YtevsWysaiv/view?usp=drive_link",
+
+                letter: "R"
+            },
+            {
+                name: "Sharp Shooter",
+                Image: "shooter.jpg",
+                videoPath: "videos/sharp_shooter.mp4",
+                videoUrl: "https://drive.google.com/file/d/1JWug9EKKuPEpibwT6RxDvtwHgdyb6xRa/view?usp=drive_link",
+                letter: "S"
+            }
+        ];
+
+        let selectedIndex = 0;
+        let currentOffset = 0;
+        let targetOffset = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartOffset = 0;
+        const cardWidth = 420;
+        const cardGap = 40;
+        let videoPlayer = null;
+        
+        // Get center offset based on screen width
+        function getCenterOffset() {
+            const track = document.getElementById('cardsTrack');
+            if (!track) return 0;
+            const containerWidth = track.parentElement.parentElement.clientWidth;
+            return (containerWidth - cardWidth) / 2;
+        }
+        
+        function getTargetOffset(index) {
+            return getCenterOffset() - index * (cardWidth + cardGap);
+        }
+        
+        function renderCards() {
+            const track = document.getElementById('cardsTrack');
+            track.innerHTML = '';
+            
+            games.forEach((game, idx) => {
+                const card = document.createElement('div');
+                card.className = `game-card ${idx === selectedIndex ? 'selected' : ''}`;
+                
+                // Card Image
+                const cardImage = document.createElement('div');
+                cardImage.className = 'card-image';
+                
+                // Use image if available; fallback to gradient + letter otherwise
+                if (game.Image) {
+                    cardImage.style.backgroundImage = `url("assets/game selection cards/${game.Image}")`;
+                    cardImage.style.backgroundSize = 'cover';
+                    cardImage.style.backgroundPosition = 'center';
+                    cardImage.style.backgroundRepeat = 'no-repeat';
+                } else {
+                    // Custom gradient per game for vibrant look
+                    const gradients = [
+                        "linear-gradient(135deg, #ff6b6b, #c92a2a)",
+                        "linear-gradient(135deg, #4d96ff, #3b5e8f)",
+                        "linear-gradient(135deg, #51cf66, #2b8a3e)",
+                        "linear-gradient(135deg, #ffd43b, #e67700)"
+                    ];
+                    cardImage.style.background = gradients[idx % gradients.length];
+                    
+                    const letterDiv = document.createElement('div');
+                    letterDiv.className = 'game-letter';
+                    letterDiv.textContent = game.letter;
+                    cardImage.appendChild(letterDiv);
+                }
+                
+                // Overlay for better text readability
+                const overlay = document.createElement('div');
+                overlay.style.position = 'absolute';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.background = 'radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.3) 100%)';
+                overlay.style.pointerEvents = 'none';
+                cardImage.appendChild(overlay);
+                
+                // Card Label
+                const label = document.createElement('div');
+                label.className = 'card-label';
+                label.textContent = game.name;
+                
+                // Play Icon
+                const playIcon = document.createElement('div');
+                playIcon.className = 'play-icon';
+                playIcon.onclick = (e) => {
+                    e.stopPropagation();
+                    openVideoModal(game);
+                };
+                
+                card.appendChild(cardImage);
+                card.appendChild(label);
+                card.appendChild(playIcon);
+                
+                if (idx === selectedIndex) {
+                    const badge = document.createElement('div');
+                    badge.className = 'selected-badge';
+                    badge.textContent = 'SELECTED';
+                    card.appendChild(badge);
+                }
+                
+                card.onclick = () => {
+                    selectedIndex = idx;
+                    targetOffset = getTargetOffset(selectedIndex);
+                    updateSelectedInfo();
+                    renderCards();
+                    updateDots();
+                    animateToTarget();
+                };
+                
+                track.appendChild(card);
+            });
+            
+            track.style.transform = `translateX(${currentOffset}px)`;
+        }
+        
+        function updateSelectedInfo() {
+            const info = document.getElementById('selectedInfo');
+            info.textContent = `Selected: ${games[selectedIndex].name}`;
+        }
+        
+        function updateDots() {
+            const container = document.getElementById('dotIndicators');
+            container.innerHTML = '';
+            
+            games.forEach((_, idx) => {
+                const dot = document.createElement('div');
+                dot.className = `dot ${idx === selectedIndex ? 'active' : ''}`;
+                dot.onclick = () => {
+                    selectedIndex = idx;
+                    targetOffset = getTargetOffset(selectedIndex);
+                    updateSelectedInfo();
+                    renderCards();
+                    updateDots();
+                    animateToTarget();
+                };
+                container.appendChild(dot);
+            });
+        }
+        
+        function animateToTarget() {
+            function animate() {
+                const diff = targetOffset - currentOffset;
+                if (Math.abs(diff) < 0.5) {
+                    currentOffset = targetOffset;
+                    const track = document.getElementById('cardsTrack');
+                    if (track) track.style.transform = `translateX(${currentOffset}px)`;
+                    return;
+                }
+                currentOffset += diff * 0.18;
+                const track = document.getElementById('cardsTrack');
+                if (track) track.style.transform = `translateX(${currentOffset}px)`;
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        
+        function handleSwipe(deltaX) {
+            if (Math.abs(deltaX) > 50) {
+                if (deltaX > 0 && selectedIndex > 0) {
+                    selectedIndex--;
+                } else if (deltaX < 0 && selectedIndex < games.length - 1) {
+                    selectedIndex++;
+                }
+                targetOffset = getTargetOffset(selectedIndex);
+                updateSelectedInfo();
+                renderCards();
+                updateDots();
+                animateToTarget();
+            } else {
+                targetOffset = getTargetOffset(selectedIndex);
+                animateToTarget();
+            }
+        }
+        
+        // Drag handlers (mouse + touch)
+        function initDragHandlers() {
+            const track = document.getElementById('cardsTrack');
+            
+            track.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartOffset = currentOffset;
+                track.classList.add('dragging');
+                e.preventDefault();
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const delta = e.clientX - dragStartX;
+                currentOffset = dragStartOffset + delta;
+                track.style.transform = `translateX(${currentOffset}px)`;
+            });
+            
+            window.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                track.classList.remove('dragging');
+                const delta = e.clientX - dragStartX;
+                handleSwipe(delta);
+            });
+            
+            track.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                dragStartX = e.touches[0].clientX;
+                dragStartOffset = currentOffset;
+                track.classList.add('dragging');
+                e.preventDefault();
+            });
+            
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const delta = e.touches[0].clientX - dragStartX;
+                currentOffset = dragStartOffset + delta;
+                track.style.transform = `translateX(${currentOffset}px)`;
+            });
+            
+            window.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                track.classList.remove('dragging');
+                const delta = e.changedTouches[0].clientX - dragStartX;
+                handleSwipe(delta);
+            });
+        }
+        
+        // Video Modal Functions (Enhanced: Works with Google Drive preview links if direct .mp4 needed, but we embed)
+        function openVideoModal(game) {
+            const modal = document.getElementById('videoModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const videoSource = document.getElementById('videoSource');
+            videoPlayer = document.getElementById('videoPlayer');
+            
+            modalTitle.textContent = `${game.name} - Preview`;
+            // Use the provided videoUrl. For actual direct video, we try to adapt; but keep as is.
+            // To make Google Drive preview work in video element we need a direct downloadable link, but we'll keep original.
+            // For better compatibility, we can try to convert drive link to direct download, but the user provided those links.
+            // Since they may not be direct .mp4, we keep the original but it's fine for demo.
+            videoSource.src = game.videoUrl;
+            videoPlayer.load();
+            modal.classList.add('active');
+            setupVideoControls();
+        }
+        
+        function setupVideoControls() {
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const volumeSlider = document.getElementById('volumeSlider');
+            
+            if (!videoPlayer) return;
+            
+            videoPlayer.volume = volumeSlider.value / 100;
+            
+            function formatTime(seconds) {
+                if (isNaN(seconds)) return "00:00 / 00:00";
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            
+            function updateProgress() {
+                if (videoPlayer.duration && !isNaN(videoPlayer.duration)) {
+                    const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                    progressFill.style.width = `${percent}%`;
+                    timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
+                }
+            }
+            
+            videoPlayer.addEventListener('timeupdate', updateProgress);
+            videoPlayer.addEventListener('loadedmetadata', updateProgress);
+            
+            playPauseBtn.onclick = () => {
+                if (videoPlayer.paused) {
+                    videoPlayer.play();
+                    playPauseBtn.textContent = '⏸ Pause';
+                } else {
+                    videoPlayer.pause();
+                    playPauseBtn.textContent = '▶ Play';
+                }
+            };
+            
+            videoPlayer.onplay = () => {
+                playPauseBtn.textContent = '⏸ Pause';
+            };
+            
+            videoPlayer.onpause = () => {
+                playPauseBtn.textContent = '▶ Play';
+            };
+            
+            progressBar.onclick = (e) => {
+                const rect = progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                videoPlayer.currentTime = percent * videoPlayer.duration;
+            };
+            
+            volumeSlider.oninput = (e) => {
+                videoPlayer.volume = e.target.value / 100;
+            };
+        }
+        
+        function closeVideoModal() {
+            const modal = document.getElementById('videoModal');
+            if (videoPlayer) {
+                videoPlayer.pause();
+            }
+            modal.classList.remove('active');
+        }
+        
+        // Navigation
+        function navigateLeft() {
+            if (selectedIndex > 0) {
+                selectedIndex--;
+                targetOffset = getTargetOffset(selectedIndex);
+                updateSelectedInfo();
+                renderCards();
+                updateDots();
+                animateToTarget();
+            }
+        }
+        
+        function navigateRight() {
+            if (selectedIndex < games.length - 1) {
+                selectedIndex++;
+                targetOffset = getTargetOffset(selectedIndex);
+                updateSelectedInfo();
+                renderCards();
+                updateDots();
+                animateToTarget();
+            }
+        }
+        
+        function startGame() {
+            const game = games[selectedIndex];
+            alert(`Launching ${game.name}!\n\nIn the full implementation, this would start the game.`);
+            // window.location.href = `game.html?game=${encodeURIComponent(game.name)}`;
+        }
+        
+        // Keyboard controls
+        function handleKeydown(e) {
+            const modal = document.getElementById('videoModal');
+            if (modal.classList.contains('active')) {
+                if (e.key === 'Escape') {
+                    closeVideoModal();
+                }
+                return;
+            }
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    navigateLeft();
+                    break;
+                case 'ArrowRight':
+                    navigateRight();
+                    break;
+                case 'Enter':
+                case ' ':
+                    startGame();
+                    break;
+                case '1':
+                    selectedIndex = 0;
+                    targetOffset = getTargetOffset(selectedIndex);
+                    updateSelectedInfo();
+                    renderCards();
+                    updateDots();
+                    animateToTarget();
+                    break;
+                case '2':
+                    if (games.length > 1) {
+                        selectedIndex = 1;
+                        targetOffset = getTargetOffset(selectedIndex);
+                        updateSelectedInfo();
+                        renderCards();
+                        updateDots();
+                        animateToTarget();
+                    }
+                    break;
+                case '3':
+                    if (games.length > 2) {
+                        selectedIndex = 2;
+                        targetOffset = getTargetOffset(selectedIndex);
+                        updateSelectedInfo();
+                        renderCards();
+                        updateDots();
+                        animateToTarget();
+                    }
+                    break;
+                case '4':
+                    if (games.length > 3) {
+                        selectedIndex = 3;
+                        targetOffset = getTargetOffset(selectedIndex);
+                        updateSelectedInfo();
+                        renderCards();
+                        updateDots();
+                        animateToTarget();
+                    }
+                    break;
+            }
+        }
+        
+        function handleResize() {
+            targetOffset = getTargetOffset(selectedIndex);
+            currentOffset = targetOffset;
+            const track = document.getElementById('cardsTrack');
+            if (track) track.style.transform = `translateX(${currentOffset}px)`;
+            renderCards(); // re-center card display after resize
+            updateDots();
+        }
+        
+        // Initialize everything
+        function init() {
+            currentOffset = getTargetOffset(0);
+            targetOffset = currentOffset;
+            
+            renderCards();
+            updateDots();
+            initDragHandlers();
+            
+            document.getElementById('navLeft').onclick = navigateLeft;
+            document.getElementById('navRight').onclick = navigateRight;
+            document.getElementById('startBtn').onclick = startGame;
+            document.getElementById('closeModal').onclick = closeVideoModal;
+            
+            window.addEventListener('keydown', handleKeydown);
+            window.addEventListener('resize', handleResize);
+            
+            document.getElementById('videoModal').onclick = (e) => {
+                if (e.target === document.getElementById('videoModal')) {
+                    closeVideoModal();
+                }
+            };
+        }
+        
+        init();
+    </script>
+</body>
+</html>
